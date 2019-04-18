@@ -21,10 +21,18 @@ typedef struct {
 } Body;
 
 //Function Declarations
-void init_body(Body *b, char* type, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz);
+void init_body(Body *b, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz);
 void create_ID(Body *b);
 
-void init_body(Body *b, char* type, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz) {
+void init_body(Body *b, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz) {
+	char* type = NULL;
+	if(mass<100){
+		type = "Asteroid";
+	}else if(mass<500){
+		type = "Planet";
+	}else{
+		type = "Star";
+	}
 	b-> type = type;
 	create_ID(b);
 	b-> mass = mass;
@@ -72,7 +80,6 @@ int main(int argc, char** argv) {
 	MPI_Init( &argc, &argv);
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &my_mpi_rank);
-	upper = argv[1] / mpi_commsize;
 
 	Bodies = calloc(3,sizeof(Body));
 
@@ -93,7 +100,7 @@ int main(int argc, char** argv) {
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
 		int randVelZ = rand()%maxAbsVelocity;
-		init_body(&bodies[i], "Star", randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
+		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
 		printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), ((&bodies[i])->type), ((&bodies[i])->mass));
 		printf("Position: X-%d Y-%d Z-%d\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
 		printf("Velocity: X-%d Y-%d Z-%d\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
