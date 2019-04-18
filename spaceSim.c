@@ -3,11 +3,14 @@
 #include <string.h>
 #include <math.h>
 #include <mpi.h>
+#include <time.h>
 
 //Space Simulator
+
+/* Body Class Structure */
+
 int IDnum = 0;
 
-//declaration of body type
 typedef struct {
 	int ID;
 	char* type;
@@ -16,6 +19,7 @@ typedef struct {
 	int posx, posy, posz;
 	int vx, vy, vz;
 } Body;
+
 //Function Declarations
 void init_body(Body *b, char* type, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz);
 void create_ID(Body *b);
@@ -50,12 +54,16 @@ int bodies_index = 0;
 int boundx, boundy, boundz;
 //tick time length
 int ticks;
-
+int tickTimeStep = 1;
+int minBodies = 10;
+int maxBodies = 15;
+int maxMass = 1000;
+int minMass = 10;
+int universeSize = 10000; //universe is currently a cube
+int maxAbsVelocity = 100;
 //Mathematical constants
 float gravity = .0000000000667408;
 int hubble = 500;	//Units km/s/Mpc
-
-
 
 
 
@@ -69,28 +77,34 @@ int main(int argc, char** argv) {
 	Bodies = calloc(3,sizeof(Body));
 
 	//how are bodies distributed randomly?
-	//Generate random ints in the range of the universe bounds as x,y,z coordinates
-	Body star;
-	Body planet;
-	Body stroid;
-	init_body(&star, "Star", 100, 10, (rand() % (upper + 1)), (rand() % (upper + 1)) + lower, (rand() % (upper + 1)) + lower, 1, 0, 0);
-	init_body(&star, "Planet", 10, 10, (rand() % (upper + 1)), (rand() % (upper + 1)) + lower, (rand() % (upper + 1)) + lower, 1, 0, 0);
-	init_body(&stroid, "Asteroid", 1, 10, (rand() % (upper + 1)), (rand() % (upper + 1)) + lower, (rand() % (upper + 1)) + lower, 1, 0, 0);
-	Bodies[bodies_index] = star;
-	bodies_index++;
-	Bodies[bodies_index] = planet;
-	bodies_index++;
-	Bodies[bodies_index] = stroid;
-	bodies_index++;
+	srand(time(NULL));   // Initialization, should only be called once.
+	int r = rand()%(maxBodies-minBodies)+minBodies;      // Returns a pseudo-random integer between minBodies and maxBodies
+	bodies = calloc(r, sizeof(Body));
+		//randomly generate overall number of objects
+	for(int i = 0; i < r; i++) {
+		//randomly generate variables of bodies, with control over the bounds of velocity, universe size, and mass
+		//randomly generate size of objects
+		int randMass = rand()%(maxMass-minMass)+minMass;
+		//randomly generate position
+		int randPosX = rand()%universeSize;
+		int randPosY = rand()%universeSize;
+		int randPosZ = rand()%universeSize;
+		//randomly generate velocity
+		int randVelX = rand()%maxAbsVelocity;
+		int randVelY = rand()%maxAbsVelocity;
+		int randVelZ = rand()%maxAbsVelocity;
+		init_body(&bodies[i], "Star", randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
+		printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), ((&bodies[i])->type), ((&bodies[i])->mass));
+		printf("Position: X-%d Y-%d Z-%d\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
+		printf("Velocity: X-%d Y-%d Z-%d\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
+	}
+}
 
-	printf("ID: %d, Type: %s, Mass: %d\n", ((&star)->ID), ((&star)->type), ((&star)->mass));
-	printf("ID: %d, Type: %s, Mass: %d\n", ((&stroid)->ID), ((&stroid)->type), ((&stroid)->mass));
-		//declare number, location, and velocity of objects
+//tick for loop
+	//calculate
+	//for planets
+		//for planets
+			//add acceleration effect
 
-	//for each tick
-		//calculate
-
-
-	//After calculating, pass objects between ranks
 
 }
