@@ -138,6 +138,7 @@ int main(int argc, char** argv) {
 					}
 				}
 			}
+			//TODO: Use the calculated forces to update the velocity of each body
 		}
 	}
 
@@ -149,6 +150,3 @@ int main(int argc, char** argv) {
 	//for planets
 		//for planets
 			//add acceleration effect
-
-
-}
