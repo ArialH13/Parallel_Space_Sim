@@ -81,6 +81,9 @@ int main(int argc, char** argv) {
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &my_mpi_rank);
 
+	int ticks = atoi(argv[1]);
+	//int num_Bodies = atoi(argv[2]);
+	//int num_Bodies = 3;
 	Bodies = calloc(3,sizeof(Body));
 
 	//how are bodies distributed randomly?
@@ -105,9 +108,43 @@ int main(int argc, char** argv) {
 		printf("Position: X-%d Y-%d Z-%d\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
 		printf("Velocity: X-%d Y-%d Z-%d\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
 	}
+
+	float xForce = 0;
+	float yForce = 0;
+	float zForce = 0;
+	//Perform the calculations for gravitational forces between bodies for as many ticks as specified by the user
+	for(int i=0;i<ticks;i++){
+		for(int j=0;j<num_Bodies;j++){
+			xForce = 0;
+			yForce = 0;
+			zForce = 0;
+			for(int k=0;k<num_Bodies;k++){
+			  if(k!=j){
+					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
+					if(Bodies[j].posx<Bodies[k].posx){
+					  	xForce += gravity * Bodies[j].mass * Bodies[k].mass / pow(Bodies[j].posx - Bodies[k].posx,2);
+					}else{
+							xForce -= gravity * Bodies[j].mass * Bodies[k].mass / pow(Bodies[j].posx - Bodies[k].posx,2);
+					}
+					if(Bodies[j].posy<Bodies[k].posy){
+							yForce += gravity * Bodies[j].mass * Bodies[k].mass / pow(Bodies[j].posy - Bodies[k].posy,2);
+					}else{
+							yForce -= gravity * Bodies[j].mass * Bodies[k].mass / pow(Bodies[j].posy - Bodies[k].posy,2);
+					}
+					if(Bodies[j].posz<Bodies[k].posz){
+							zForce += gravity * Bodies[j].mass * Bodies[k].mass / pow(Bodies[j].posz - Bodies[k].posz,2);
+					}else{
+							zForce -= gravity * Bodies[j].mass * Bodies[k].mass / pow(Bodies[j].posz - Bodies[k].posz,2);
+					}
+				}
+			}
+		}
+	}
+
 }
 
 //tick for loop
+
 	//calculate
 	//for planets
 		//for planets
