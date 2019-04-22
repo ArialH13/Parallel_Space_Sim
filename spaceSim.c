@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
 
 		}
 
-		// TODO: Accept any new bodies that passed the rank boundary
+		// TODO: Accept any new bodies that passed the rank boundary (check out MPI_Type_create_struct)
 
 		// TODO: Detect collisions
 
