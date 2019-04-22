@@ -139,6 +139,9 @@ int main(int argc, char** argv) {
 				}
 			}
 			//TODO: Use the calculated forces to update the velocity of each body
+			//TODO: Update position
+
+			//TODO: Detect collisions
 		}
 	}
 
