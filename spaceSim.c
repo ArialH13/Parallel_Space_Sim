@@ -7,7 +7,7 @@
 
 //Space Simulator
 
-inline int root(int input, int n)
+static inline int root(int input, int n)
 {
   return round(pow(input, 1./n));
 }
@@ -94,8 +94,7 @@ int main(int argc, char** argv) {
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
 
 	int ticks = atoi(argv[1]);
-	bodies = calloc(3,sizeof(Body));
-	int rankSize = universeSize/root(mpi_commSize, 3);
+	int rankSize = universeSize/root(mpi_commsize, 3);
 
 
 	//how are bodies distributed randomly?
@@ -145,7 +144,7 @@ int main(int argc, char** argv) {
 			zForce = 0;
 			for(int k=0;k<num_bodies;k++){
 				if(k!=j){
-					float magnitude_squared = pow(sqrt(pow(bodies[j].posx-bodies[k].posx, 2), pow(bodies[j].posy-bodies[k].posy, 2), pow(bodies[j].posz-bodies[k].posz, 2)), 2);
+					double magnitude_squared = pow(sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2) ), 2);
 					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
 					if(bodies[j].posx<bodies[k].posx){
 						xForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
@@ -177,7 +176,7 @@ int main(int argc, char** argv) {
 
 			//Array of the number of objects to be sent to each other rank
 			//Ranks ordered bottom to top, left to right, back to forward
-			int to_other_ranks[mpi_commsize] = 0;
+			//int to_other_ranks[mpi_commsize] = 0;
 
 			// Check rank changes at boundaries based on position
 
@@ -187,14 +186,14 @@ int main(int argc, char** argv) {
 
 		// TODO: Accept any new bodies that passed the rank boundary (check out MPI_Type_create_struct)
 
-		//Detect and resolve collisions
+		// Detect and resolve collisions (type == -1 means the body was destroyed)
 		for(int i=0;i<num_bodies;i++){
-			if(bodies[i]==NULL){
+			if(bodies[i].type == -1){
 				continue;
 			}
 			for(int j=i+1;j<num_bodies;j++){
 				int hit_distance = bodies[i].radius + bodies[j].radius;
-				if(bodies[j]==NULL){
+				if(bodies[j].type == -1){
 					continue;
 				}
 				//Check if the bodies have collided, i.e. if the difference in their positions is less than their combined radius
@@ -202,16 +201,16 @@ int main(int argc, char** argv) {
 					//If they have collided and one is much larger than the other, the smaller one is absorbed (mass added to the larger one_)
 					if(bodies[i].mass>bodies[j].mass*10){
 						bodies[i].mass += bodies[j].mass;
-						bodies[j] = NULL;
-						continue;
+						bodies[j].type = -1;
+						//continue;
 					}else if(bodies[i].mass*10<bodies[j].mass){
 						bodies[j].mass += bodies[i].mass;
-						bodies[i] = NULL;
-						continue;
+						bodies[i].type = -1;
+						//continue;
 					}else{
 						//If their masses are similar, both are destroyed
-						bodies[i] = NULL;
-						bodies[j] = NULL;
+						bodies[i].type = -1;
+						bodies[j].type = -1;
 					}
 				}
 			}
