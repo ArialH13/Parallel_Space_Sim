@@ -7,6 +7,11 @@
 
 //Space Simulator
 
+inline int root(int input, int n)
+{
+  return round(pow(input, 1./n));
+}
+
 /* Body Class Structure */
 
 int IDnum = 0;
@@ -62,6 +67,7 @@ int mpi_myrank;
 int mpi_commsize;
 
 //array of bodies for each rank
+Body* totalBodies;
 Body* bodies;
 int bodies_index = 0;
 
@@ -75,6 +81,7 @@ int maxbodies = 15;
 int maxMass = 1000;
 int minMass = 10;
 int universeSize = 10000; //universe is currently a cube
+int rankSize = 0;
 int maxAbsVelocity = 100;
 //Mathematical constants
 float gravity = .0000000000667408;
@@ -88,6 +95,7 @@ int main(int argc, char** argv) {
 
 	int ticks = atoi(argv[1]);
 	bodies = calloc(3,sizeof(Body));
+	int rankSize = universeSize/root(mpi_commSize, 3);
 
 
 	//how are bodies distributed randomly?
@@ -100,17 +108,19 @@ int main(int argc, char** argv) {
 		//randomly generate size of objects
 		int randMass = rand()%(maxMass-minMass)+minMass;
 		//randomly generate position
-		int randPosX = rand()%universeSize;
-		int randPosY = rand()%universeSize;
-		int randPosZ = rand()%universeSize;
+		int randPosX = rand()%rankSize + mpi_myrank%root(mpi_myrank, 3)*rankSize;
+		int randPosY = rand()%rankSize + mpi_myrank/root(mpi_myrank, 3)%root(mpi_myrank, 3)*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/root(mpi_myrank, 3)*mpi_myrank*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
 		int randVelZ = rand()%maxAbsVelocity;
 		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
-		printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), types[((&bodies[i])->type)], ((&bodies[i])->mass));
-		printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
-		printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
+		#ifdef DEBUG
+			printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), types[((&bodies[i])->type)], ((&bodies[i])->mass));
+			printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
+			printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
+		#endif
 	}
 
 	float xForce = 0;
