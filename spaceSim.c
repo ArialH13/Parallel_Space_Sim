@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
 			zForce = 0;
 			for(int k=0;k<num_bodies;k++){
 				if(k!=j){
+					float radius = ;
 					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
 					if(bodies[j].posx<bodies[k].posx){
 						xForce += gravity * bodies[j].mass * bodies[k].mass / pow(bodies[j].posx - bodies[k].posx,2);
