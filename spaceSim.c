@@ -89,6 +89,7 @@ int main(int argc, char** argv) {
 	int ticks = atoi(argv[1]);
 	bodies = calloc(3,sizeof(Body));
 
+
 	//how are bodies distributed randomly?
 	srand(time(NULL));   // Initialization, should only be called once.
 	int num_bodies = rand()%(maxbodies-minbodies)+minbodies;      // Returns a pseudo-random integer between minbodies and maxbodies
@@ -164,14 +165,47 @@ int main(int argc, char** argv) {
 			bodies[j].posy += bodies[j].vy * tickTimeStep;
 			bodies[j].posz += bodies[j].vz * tickTimeStep;
 
+			//Array of the number of objects to be sent to each other rank
+			//Ranks ordered bottom to top, left to right, back to forward
+			int to_other_ranks[mpi_commsize] = 0;
+
 			// Check rank changes at boundaries based on position
+
 
 
 		}
 
 		// TODO: Accept any new bodies that passed the rank boundary (check out MPI_Type_create_struct)
 
-		// TODO: Detect collisions
+		//Detect and resolve collisions
+		for(int i=0;i<num_bodies;i++){
+			if(bodies[i]==NULL){
+				continue;
+			}
+			for(int j=i+1;j<num_bodies;j++){
+				int hit_distance = bodies[i].radius + bodies[j].radius;
+				if(bodies[j]==NULL){
+					continue;
+				}
+				//Check if the bodies have collided, i.e. if the difference in their positions is less than their combined radius
+				if((abs(bodies[i].posx-bodies[j].posx)+abs(bodies[i].posy-bodies[j].posy)+abs(bodies[i].posz-bodies[j].posz))<=hit_distance){
+					//If they have collided and one is much larger than the other, the smaller one is absorbed (mass added to the larger one_)
+					if(bodies[i].mass>bodies[j].mass*10){
+						bodies[i].mass += bodies[j].mass;
+						bodies[j] = NULL;
+						continue;
+					}else if(bodies[i].mass*10<bodies[j].mass){
+						bodies[j].mass += bodies[i].mass;
+						bodies[i] = NULL;
+						continue;
+					}else{
+						//If their masses are similar, both are destroyed
+						bodies[i] = NULL;
+						bodies[j] = NULL;
+					}
+				}
+			}
+		}
 
 
 	}
@@ -185,7 +219,7 @@ int main(int argc, char** argv) {
 		//for planets
 			//add acceleration effect
 
-/* Experiments(methods/parameters/explanations): 
+/* Experiments(methods/parameters/explanations):
 
 
 
