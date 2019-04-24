@@ -93,12 +93,18 @@ int main(int argc, char** argv) {
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
 
-	int ticks = atoi(argv[1]);
+	int ticks = 1;//atoi(argv[1]);
+	#ifdef DEBUG
+		printf("rankSize denom: %d\n", root(mpi_commsize, 3));
+	#endif
 	int rankSize = universeSize/root(mpi_commsize, 3);
 
 
 	//how are bodies distributed randomly?
 	srand(time(NULL));   // Initialization, should only be called once.
+	#ifdef DEBUG
+		printf("num_bodies denom: %d\n", (maxbodies-minbodies)+minbodies);
+	#endif
 	int num_bodies = rand()%(maxbodies-minbodies)+minbodies;      // Returns a pseudo-random integer between minbodies and maxbodies
 	bodies = calloc(num_bodies, sizeof(Body));
 		//randomly generate overall number of objects
@@ -115,7 +121,7 @@ int main(int argc, char** argv) {
 		int randVelY = rand()%maxAbsVelocity;
 		int randVelZ = rand()%maxAbsVelocity;
 		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
-		#ifdef DEBUG
+		#ifdef DEBUG1
 			printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), types[((&bodies[i])->type)], ((&bodies[i])->mass));
 			printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
 			printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
@@ -144,7 +150,8 @@ int main(int argc, char** argv) {
 			zForce = 0;
 			for(int k=0;k<num_bodies;k++){
 				if(k!=j){
-					double magnitude_squared = pow(sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2) ), 2);
+					float magnitude_squared = pow(sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2) ), 2);
+					//float magnitude_squared = 1;
 					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
 					if(bodies[j].posx<bodies[k].posx){
 						xForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
@@ -218,6 +225,10 @@ int main(int argc, char** argv) {
 
 
 	}
+
+	// CLean up allocated memory
+
+	MPI_Finalize();
 
 }
 
