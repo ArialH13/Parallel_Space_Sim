@@ -62,6 +62,16 @@ void create_ID(Body *b) {
 	IDnum++;
 }
 
+//Outputs a given array of Bodies. Resulting file contains only the x,y,z-coordinates of each Body
+void output_Bodies(Body *final_bodies){
+	FILE* output = fopen("universe_contents.csv", "w");
+	int i = 0;
+	while(&final_bodies[i]!=NULL){
+		fprintf(output,"%d,%d,%d,%d\n",final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
+	}
+  fclose(output);
+}
+
 //MPI variables
 int mpi_myrank;
 int mpi_commsize;
@@ -82,6 +92,8 @@ int maxMass = 1000;
 int minMass = 10;
 int universeSize = 10000; //universe is currently a cube
 int rankSize = 0;
+int rankMass = 0;
+int* otherRankMasses;
 int maxAbsVelocity = 100;
 //Mathematical constants
 float gravity = .0000000000667408;
@@ -99,6 +111,8 @@ int main(int argc, char** argv) {
 	#endif
 	int rankSize = universeSize/root(mpi_commsize, 3);
 
+	otherRankMasses = calloc(27, sizeof(int));
+
 
 	//how are bodies distributed randomly?
 	srand(time(NULL));   // Initialization, should only be called once.
@@ -115,7 +129,7 @@ int main(int argc, char** argv) {
 		//randomly generate position
 		int randPosX = rand()%rankSize + mpi_myrank%root(mpi_myrank, 3)*rankSize;
 		int randPosY = rand()%rankSize + mpi_myrank/root(mpi_myrank, 3)%root(mpi_myrank, 3)*rankSize;
-		int randPosZ = rand()%rankSize + mpi_myrank/root(mpi_myrank, 3)*mpi_myrank*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/(root(mpi_myrank, 3)*root(mpi_myrank, 3))*mpi_myrank*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
@@ -126,6 +140,11 @@ int main(int argc, char** argv) {
 			printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
 			printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
 		#endif
+	}
+
+	//mass of added ranks used between ranks for force calculations
+	for(int j = 0; j < num_bodies; j++) {
+		rankMass = rankMass + bodies[j].mass;
 	}
 
 	float xForce = 0;
@@ -144,31 +163,44 @@ int main(int argc, char** argv) {
 		Velocity
 		Position
 		*/
+
+		//add forces of this rank together (for now, assumption is that mass is generally centered in the rank)
+		//for now, the force of the rank will be calculated using the added mass
+		//mpi translate rankmass
+		//commented for debugging purposes
+		/*
+		int offset = mpi_myrank - 1 - ranksPerRow - ranksPerRow*ranksPerRow;
+		MPI_Request request;
+		MPI_Status status;
+		for(int j = 0; j < 3; j++) { 	//j == x, +1 -1
+			for(int k = 0; k < 3; k++) {	//k == y, +-ranksPerRow
+				for(int l = 0; l < 3; l++) {  //l == z +-/ranksPerRow*ranksPerRow
+					//get mass from ranks
+					if(!((j == 1 && k == 1) && l == 1)) {
+						//row to be recieved and sent to
+						MPI_Isend(&rankMass, 1, MPI_INT, offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
+						MPI_Recv(&otherRankMasses[27 - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow)], int count, MPI_INT, MPI_ANY_SOURCE,
+							MPI_ANY_TAG, MPI_COMM_WORLD, status);
+					
+					}
+
+				}
+			}
+		}
+		*/
 		for(int j=0;j<num_bodies;j++){
 			xForce = 0;
 			yForce = 0;
 			zForce = 0;
 			for(int k=0;k<num_bodies;k++){
 				if(k!=j){
-					float magnitude_squared = pow(sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2) ), 2);
-					//float magnitude_squared = 1;
+					float distance = sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2));
 					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
-					if(bodies[j].posx<bodies[k].posx){
-						xForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}else{
-						xForce -= gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}
-					if(bodies[j].posy<bodies[k].posy){
-						yForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}else{
-						yForce -= gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}
-					if(bodies[j].posz<bodies[k].posz){
-						zForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}else{
-						zForce -= gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}
-				}
+
+						xForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posx - bodies[j].posx);
+						yForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posy - bodies[j].posy);
+						zForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posz - bodies[j].posz);
+
 			}
 
 			// Use the calculated forces to update the velocity of each body
@@ -180,6 +212,8 @@ int main(int argc, char** argv) {
 			bodies[j].posx += bodies[j].vx * tickTimeStep;
 			bodies[j].posy += bodies[j].vy * tickTimeStep;
 			bodies[j].posz += bodies[j].vz * tickTimeStep;
+
+			//Add forces of this rank together for other ranks
 
 			//Array of the number of objects to be sent to each other rank
 			//Ranks ordered bottom to top, left to right, back to forward
@@ -229,7 +263,7 @@ int main(int argc, char** argv) {
 	// CLean up allocated memory
 
 	MPI_Finalize();
-
+	output_Bodies(bodies);
 }
 
 //tick for loop
