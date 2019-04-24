@@ -6,10 +6,9 @@
 #include <time.h>
 
 //Space Simulator
-
 static inline int root(int input, int n)
 {
-  return round(pow(input, 1/n));
+  return round(pow(input, 1.0/n));
 }
 
 /* Body Class Structure */
@@ -85,12 +84,12 @@ int boundx, boundy, boundz;
 //tick time length
 int ticks;
 int tickTimeStep = 1; // day
-int minbodies = 10;
-int maxbodies = 15;
+int minbodies = 1;
+int maxbodies = 2;
 int maxMass = 1000;
 int minMass = 10;
 long int universeSize = 10000; //universe is currently a cube
-int rankSize = 0;
+long int rankSize = 0;
 int rankMass = 0;
 int* otherRankMasses;
 int maxAbsVelocity = 100;
@@ -105,18 +104,13 @@ int main(int argc, char** argv) {
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
 
 	int ticks = atoi(argv[1]);
-	#ifdef DEBUG
-		printf("rankSize denom: %d\n", root(mpi_commsize, 3));
-	#endif
-	long int rankSize = universeSize/root(mpi_commsize, 3);
+	rankSize = universeSize/root(mpi_commsize, 3);
 
 	otherRankMasses = calloc(27, sizeof(int));
 
 	//how are bodies distributed randomly?
 	srand(time(NULL));   // Initialization, should only be called once.
-	#ifdef DEBUG
-		printf("num_bodies denom: %d\n", (maxbodies-minbodies)+minbodies);
-	#endif
+
 	int num_bodies = rand()%(maxbodies-minbodies)+minbodies;      // Returns a pseudo-random integer between minbodies and maxbodies
 	bodies = calloc(num_bodies, sizeof(Body));
 		//randomly generate overall number of objects
@@ -125,9 +119,9 @@ int main(int argc, char** argv) {
 		//randomly generate size of objects
 		int randMass = rand()%(maxMass-minMass)+minMass;
 		//randomly generate position
-		int randPosX = rand()%rankSize + mpi_myrank%root(mpi_myrank, 3)*rankSize;
-		int randPosY = rand()%rankSize + mpi_myrank/root(mpi_myrank, 3)%root(mpi_myrank, 3)*rankSize;
-		int randPosZ = rand()%rankSize + mpi_myrank/(root(mpi_myrank, 3)*root(mpi_myrank, 3))*mpi_myrank*rankSize;
+		int randPosX = rand()%rankSize + mpi_myrank%root(mpi_commsize, 3)*rankSize;
+		int randPosY = rand()%rankSize + mpi_myrank/root(mpi_commsize, 3)%root(mpi_commsize, 3)*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/(root(mpi_commsize, 3)*root(mpi_commsize, 3))*mpi_myrank*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
