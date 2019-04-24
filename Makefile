@@ -3,6 +3,9 @@
 main: spaceSim.c
 	mpicc -o main.exe spaceSim.c -lm
 
+debug: spaceSim.c
+	mpicc -o main.exe spaceSim.c -lm -D DEBUG
+
 bluegene: spaceSim.c
 	mpixlc -o main.exe spaceSim.c -lm 
 
