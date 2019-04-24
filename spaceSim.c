@@ -9,7 +9,7 @@
 
 static inline int root(int input, int n)
 {
-  return round(pow(input, 1./n));
+  return round(pow(input, 1/n));
 }
 
 /* Body Class Structure */
@@ -63,10 +63,9 @@ void create_ID(Body *b) {
 }
 
 //Outputs a given array of Bodies. Resulting file contains only the x,y,z-coordinates of each Body
-void output_Bodies(Body *final_bodies){
+void output_Bodies(Body *final_bodies, int num){
 	FILE* output = fopen("universe_contents.csv", "w");
-	int i = 0;
-	while(&final_bodies[i]!=NULL){
+	for(int i=0;i<num;i++){
 		fprintf(output,"%d,%d,%d,%d\n",final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
 	}
   fclose(output);
@@ -90,7 +89,7 @@ int minbodies = 10;
 int maxbodies = 15;
 int maxMass = 1000;
 int minMass = 10;
-int universeSize = 10000; //universe is currently a cube
+long int universeSize = 10000; //universe is currently a cube
 int rankSize = 0;
 int rankMass = 0;
 int* otherRankMasses;
@@ -105,14 +104,13 @@ int main(int argc, char** argv) {
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
 
-	int ticks = 1;//atoi(argv[1]);
+	int ticks = atoi(argv[1]);
 	#ifdef DEBUG
 		printf("rankSize denom: %d\n", root(mpi_commsize, 3));
 	#endif
-	int rankSize = universeSize/root(mpi_commsize, 3);
+	long int rankSize = universeSize/root(mpi_commsize, 3);
 
 	otherRankMasses = calloc(27, sizeof(int));
-
 
 	//how are bodies distributed randomly?
 	srand(time(NULL));   // Initialization, should only be called once.
@@ -200,7 +198,7 @@ int main(int argc, char** argv) {
 						xForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posx - bodies[j].posx);
 						yForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posy - bodies[j].posy);
 						zForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posz - bodies[j].posz);
-
+					}
 			}
 
 			// Use the calculated forces to update the velocity of each body
@@ -262,8 +260,12 @@ int main(int argc, char** argv) {
 
 	// CLean up allocated memory
 
+	if(mpi_myrank==0){
+			output_Bodies(bodies,num_bodies);
+	}
 	MPI_Finalize();
-	output_Bodies(bodies);
+	return EXIT_SUCCESS;
+
 }
 
 //tick for loop
