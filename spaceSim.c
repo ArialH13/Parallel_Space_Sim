@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
 		int randVelY = rand()%maxAbsVelocity;
 		int randVelZ = rand()%maxAbsVelocity;
 		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
-		#ifdef DEBUG1
+		#ifdef DEBUG
 			printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), types[((&bodies[i])->type)], ((&bodies[i])->mass));
 			printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
 			printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
