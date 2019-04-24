@@ -62,6 +62,16 @@ void create_ID(Body *b) {
 	IDnum++;
 }
 
+//Outputs a given array of Bodies. Resulting file contains only the x,y,z-coordinates of each Body
+void output_Bodies(Body *final_bodies){
+	FILE* output = fopen("universe_contents.csv", "w");
+	int i = 0;
+	while(&final_bodies[i]!=NULL){
+		fprintf(output,"%d,%d,%d,%d\n",final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
+	}
+  fclose(output);
+}
+
 //MPI variables
 int mpi_myrank;
 int mpi_commsize;
@@ -218,6 +228,8 @@ int main(int argc, char** argv) {
 
 
 	}
+
+	output_Bodies(bodies);
 
 }
 
