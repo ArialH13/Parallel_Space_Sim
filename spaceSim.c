@@ -154,24 +154,13 @@ int main(int argc, char** argv) {
 			zForce = 0;
 			for(int k=0;k<num_bodies;k++){
 				if(k!=j){
-					double magnitude_squared = pow(sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2) ), 2);
+					double distance = sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2));
 					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
-					if(bodies[j].posx<bodies[k].posx){
-						xForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}else{
-						xForce -= gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}
-					if(bodies[j].posy<bodies[k].posy){
-						yForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}else{
-						yForce -= gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}
-					if(bodies[j].posz<bodies[k].posz){
-						zForce += gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}else{
-						zForce -= gravity * bodies[j].mass * bodies[k].mass / magnitude_squared;
-					}
-				}
+
+						xForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posx - bodies[j].posx);
+						yForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posy - bodies[j].posy);
+						zForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posz - bodies[j].posz);
+
 			}
 
 			// Use the calculated forces to update the velocity of each body
