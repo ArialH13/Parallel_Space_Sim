@@ -79,6 +79,7 @@ int mpi_commsize;
 Body* totalBodies;
 Body* bodies;
 int bodies_index = 0;
+int totalBodyNum = 0;
 
 //universe bounds x, y, z
 int boundx, boundy, boundz;
@@ -277,11 +278,12 @@ int main(int argc, char** argv) {
 	}
 
 	// CLean up allocated memory
-	//TODO: print all bodies, not just from rank 0
+	totalBodyNum = num_bodies * mpi_commsize;
+	totalBodies = calloc(totalBodyNum, sizeof(Body));
 
-	//test that MPI_BODY works
+	MPI_Gather(bodies, num_bodies, MPI_BODY, totalBodies, num_bodies, MPI_BODY, 0, MPI_COMM_WORLD);
 	if(mpi_myrank==0){
-			output_Bodies(bodies,num_bodies);
+			output_Bodies(totalBodies, totalBodyNum);
 	}
 	MPI_Finalize();
 	return EXIT_SUCCESS;
