@@ -278,6 +278,8 @@ int main(int argc, char** argv) {
 
 	// CLean up allocated memory
 	//TODO: print all bodies, not just from rank 0
+
+	//test that MPI_BODY works
 	if(mpi_myrank==0){
 			output_Bodies(bodies,num_bodies);
 	}
