@@ -4,6 +4,7 @@
 #include <math.h>
 #include <mpi.h>
 #include <time.h>
+#include <stddef.h>
 
 //Space Simulator
 static inline int root(int input, int n)
@@ -84,8 +85,8 @@ int boundx, boundy, boundz;
 //tick time length
 int ticks;
 int tickTimeStep = 1; // day
-int minbodies = 1;
-int maxbodies = 2;
+int minbodies = 2;
+int maxbodies = 3;
 int maxMass = 1000;
 int minMass = 10;
 long int universeSize = 10000; //universe is currently a cube
@@ -98,6 +99,7 @@ float gravity = .0000000000667408;
 int hubble = 500;	//Units km/s/Mpc
 
 int main(int argc, char** argv) {
+
 	//declare ranks
 	MPI_Init( &argc, &argv);
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
@@ -107,6 +109,28 @@ int main(int argc, char** argv) {
 	rankSize = universeSize/root(mpi_commsize, 3);
 
 	otherRankMasses = calloc(27, sizeof(int));
+
+	/* create a type for struct body */
+    const int nitems = 10;
+    int blocklengths[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    MPI_Datatype types[10] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT};
+    MPI_Datatype MPI_BODY;
+    MPI_Aint offsets[10];
+
+    //Defining variables within the struct in MPI data type
+    offsets[0] = offsetof(Body, ID);
+    offsets[1] = offsetof(Body, type);
+    offsets[2] = offsetof(Body, mass);
+    offsets[3] = offsetof(Body, radius);
+    offsets[4] = offsetof(Body, posx);
+    offsets[5] = offsetof(Body, posy);
+    offsets[6] = offsetof(Body, posz);
+    offsets[7] = offsetof(Body, vx);
+    offsets[8] = offsetof(Body, vy);
+    offsets[9] = offsetof(Body, vz);
+
+    MPI_Type_create_struct(nitems, blocklengths, offsets, types, &MPI_BODY);
+    MPI_Type_commit(&MPI_BODY);
 
 	//how are bodies distributed randomly?
 	srand(time(NULL));   // Initialization, should only be called once.
@@ -253,7 +277,7 @@ int main(int argc, char** argv) {
 	}
 
 	// CLean up allocated memory
-
+	//TODO: print all bodies, not just from rank 0
 	if(mpi_myrank==0){
 			output_Bodies(bodies,num_bodies);
 	}
@@ -262,15 +286,8 @@ int main(int argc, char** argv) {
 
 }
 
-//tick for loop
-
-	//calculate
-	//for planets
-		//for planets
-			//add acceleration effect
 
 /* Experiments(methods/parameters/explanations):
-
 
 
 */
