@@ -144,18 +144,26 @@ int main(int argc, char** argv) {
 		//randomly generate size of objects
 		int randMass = rand()%(maxMass-minMass)+minMass;
 		//randomly generate position
-		int randPosX = rand()%rankSize + mpi_myrank%root(mpi_commsize, 3)*rankSize;
-		int randPosY = rand()%rankSize + mpi_myrank/root(mpi_commsize, 3)%root(mpi_commsize, 3)*rankSize;
-		int randPosZ = rand()%rankSize + mpi_myrank/(root(mpi_commsize, 3)*root(mpi_commsize, 3))*mpi_myrank*rankSize;
+		// Micro-optimization: storing expensive cube root function call
+		int cube = root(mpi_commsize, 3);
+		int randPosX = rand()%rankSize + mpi_myrank%cube*rankSize;
+		int randPosY = rand()%rankSize + mpi_myrank/cube%cube*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/(cube*cube)*mpi_myrank*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
 		int randVelZ = rand()%maxAbsVelocity;
 		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
-		#ifdef DEBUG
+		#ifdef DEBUG1
 			printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), types[((&bodies[i])->type)], ((&bodies[i])->mass));
 			printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
 			printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
+		#endif
+		#ifdef DEBUG
+			randPosX = rankSize + mpi_myrank%cube*rankSize;
+			randPosY = rankSize + mpi_myrank/cube%cube*rankSize;
+			randPosZ = rankSize + mpi_myrank/(cube*cube)*rankSize;
+			printf("Rank %d Rank Division: (%d, %d, %d)\n", mpi_myrank, randPosX, randPosY, randPosZ);
 		#endif
 	}
 
@@ -283,6 +291,18 @@ int main(int argc, char** argv) {
 	MPI_Gather(bodies, num_bodies, MPI_BODY, totalBodies, num_bodies, MPI_BODY, 0, MPI_COMM_WORLD);
 
 	if(mpi_myrank==0){
+		#ifdef DEBUG
+			int i = 0;
+			for (int x = -1; x <= 1; x++) {
+				for (int y = -1; y <= 1; y++) {
+					for (int z = -1; z <= 1; z++) {
+						printf("(%d, %d, %d)\n", x, y, z);
+						i++;
+					}
+				}
+			}
+			printf("%d\n", i);
+		#endif
 		output_Bodies(totalBodies, totalBodyNum);
 	}
 	MPI_Finalize();
