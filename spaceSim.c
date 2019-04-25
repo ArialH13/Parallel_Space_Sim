@@ -95,6 +95,7 @@ long int rankSize = 0;
 int rankMass = 0;
 int* otherRankMasses;
 int maxAbsVelocity = 100;
+int ranksPerRow = 0;
 //Mathematical constants
 float gravity = .0000000000667408;
 int hubble = 500;	//Units km/s/Mpc
@@ -108,6 +109,9 @@ int main(int argc, char** argv) {
 
 	int ticks = atoi(argv[1]);
 	rankSize = universeSize/root(mpi_commsize, 3);
+	ranksPerRow = root(mpi_commsize, 3);
+	printf("ranksPerRow: %d\n", ranksPerRow);
+
 
 	otherRankMasses = calloc(27, sizeof(int));
 
@@ -194,8 +198,8 @@ int main(int argc, char** argv) {
 		//for now, the force of the rank will be calculated using the added mass
 		//mpi translate rankmass
 		//commented for debugging purposes
-		/*
-		int offset = mpi_myrank - 1 - ranksPerRow - ranksPerRow*ranksPerRow;
+		
+		int offset = 1 + ranksPerRow + ranksPerRow*ranksPerRow;
 		MPI_Request request;
 		MPI_Status status;
 		for(int j = 0; j < 3; j++) { 	//j == x, +1 -1
@@ -204,16 +208,44 @@ int main(int argc, char** argv) {
 					//get mass from ranks
 					if(!((j == 1 && k == 1) && l == 1)) {
 						//row to be recieved and sent to
-						MPI_Isend(&rankMass, 1, MPI_INT, offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
-						MPI_Recv(&otherRankMasses[27 - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow)], int count, MPI_INT, MPI_ANY_SOURCE,
-							MPI_ANY_TAG, MPI_COMM_WORLD, status);
+						//xbound up down 
+						int shouldSend = 0;
+						int shouldReceive = 0;
+						if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 2)) { //xbound up 
+							if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 2)) {  //ybound up
+								if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 2)) {  //zbound up
+									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
+										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
+											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
+												printf("Rank %d sending to %d\n", mpi_myrank, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
+								}
+							}
+						}
 					
 					}
 
 				}
 			}
+				if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 0)) { //xbound up 
+					if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 0)) {  //ybound up
+						if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 0)) {  //zbound up
+							if(!((mpi_myrank%ranksPerRow == 0) && j == 2)) {  //xbound down
+								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
+									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
+										printf("Rank %d receiving from %d\n", mpi_myrank, mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow));
+												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+														}
+													}
+												}
+											}
+										}
+									}
 		}
-		*/
+	}
+}
+}
+		
 		for(int j=0;j<num_bodies;j++){
 			xForce = 0;
 			yForce = 0;
