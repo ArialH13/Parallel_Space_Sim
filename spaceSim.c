@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
     MPI_Type_commit(&MPI_BODY);
 
 	//how are bodies distributed randomly?
-	srand(time(NULL));   // Initialization, should only be called once.
+	srand(time(NULL)*(mpi_myrank+1));   // Initialization, should only be called once.
 
 	int num_bodies = rand()%(maxbodies-minbodies)+minbodies;      // Returns a pseudo-random integer between minbodies and maxbodies
 	bodies = calloc(num_bodies, sizeof(Body));
@@ -242,7 +242,8 @@ int main(int argc, char** argv) {
 
 		}
 
-		// TODO: Accept any new bodies that passed the rank boundary (check out MPI_Type_create_struct)
+		// TODO: Accept any new bodies that passed the rank boundary 
+		
 
 		// Detect and resolve collisions (type == -1 means the body was destroyed)
 		for(int i=0;i<num_bodies;i++){
@@ -274,21 +275,24 @@ int main(int argc, char** argv) {
 			}
 		}
 
-
 	}
-
-
-	// CLean up allocated memory
 
 	totalBodyNum = num_bodies * mpi_commsize;
 	totalBodies = calloc(totalBodyNum, sizeof(Body));
 
 	MPI_Gather(bodies, num_bodies, MPI_BODY, totalBodies, num_bodies, MPI_BODY, 0, MPI_COMM_WORLD);
-	
+
 	if(mpi_myrank==0){
-			output_Bodies(totalBodies, totalBodyNum);
+		printf("myrank: %d\n", mpi_myrank);
+		output_Bodies(totalBodies, totalBodyNum);
 	}
 	MPI_Finalize();
+
+	// Clean up allocated memory
+	free(totalBodies);
+	free(bodies);
+	free(otherRankMasses);
+
 	return EXIT_SUCCESS;
 
 }
