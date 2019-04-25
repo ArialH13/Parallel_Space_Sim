@@ -12,6 +12,14 @@ static inline int root(int input, int n)
   return round(pow(input, 1.0/n));
 }
 
+int max(int a, int b) {
+	return (a > b ? a : b);
+}
+
+int min(int a, int b) {
+	return (a < b ? a : b);
+}
+
 /* Body Class Structure */
 
 int IDnum = 0;
@@ -90,7 +98,7 @@ int minbodies = 1;
 int maxbodies = 2;
 int maxMass = 1000;
 int minMass = 10;
-long int universeSize = 10000; //universe is currently a cube
+long int universeSize = 10000; //universe is currently a ranksPerRow
 long int rankSize = 0;
 int rankMass = 0;
 int* otherRankMasses;
@@ -110,7 +118,7 @@ int main(int argc, char** argv) {
 	int ticks = atoi(argv[1]);
 	rankSize = universeSize/root(mpi_commsize, 3);
 	ranksPerRow = root(mpi_commsize, 3);
-	printf("ranksPerRow: %d\n", ranksPerRow);
+	//printf("ranksPerRow: %d\n", ranksPerRow);
 
 
 	otherRankMasses = calloc(27, sizeof(int));
@@ -148,11 +156,10 @@ int main(int argc, char** argv) {
 		//randomly generate size of objects
 		int randMass = rand()%(maxMass-minMass)+minMass;
 		//randomly generate position
-		// Micro-optimization: storing expensive cube root function call
-		int cube = root(mpi_commsize, 3);
-		int randPosX = rand()%rankSize + mpi_myrank%cube*rankSize;
-		int randPosY = rand()%rankSize + mpi_myrank/cube%cube*rankSize;
-		int randPosZ = rand()%rankSize + mpi_myrank/(cube*cube)*mpi_myrank*rankSize;
+		// Micro-optimization: storing expensive ranksPerRow root function call
+		int randPosX = rand()%rankSize + mpi_myrank%ranksPerRow*rankSize;
+		int randPosY = rand()%rankSize + mpi_myrank/ranksPerRow%ranksPerRow*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*mpi_myrank*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
@@ -165,9 +172,9 @@ int main(int argc, char** argv) {
 		#endif
 		#ifdef DEBUG
 			int testSize = 1;
-			randPosX = mpi_myrank%cube*testSize;
-			randPosY = mpi_myrank/cube%cube*testSize;
-			randPosZ = mpi_myrank/(cube*cube)*testSize;
+			randPosX = mpi_myrank%ranksPerRow*testSize;
+			randPosY = mpi_myrank/ranksPerRow%ranksPerRow*testSize;
+			randPosZ = mpi_myrank/(ranksPerRow*ranksPerRow)*testSize;
 			printf("Rank %d Rank Division: (%d, %d, %d)\n", mpi_myrank, randPosX, randPosY, randPosZ);
 		#endif
 	}
@@ -186,6 +193,7 @@ int main(int argc, char** argv) {
 	Generate bodies and randomize based upon the rank boundaries, not universe boundaries
 	Sort each rank's population (bodies)
 	*/
+
 	for(int i=0;i<ticks;i++){
 		/*
 		In this loop we update:
@@ -217,7 +225,7 @@ int main(int argc, char** argv) {
 									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
 										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
-												printf("Rank %d sending to %d\n", mpi_myrank, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												//printf("Rank %d sending to %d\n", mpi_myrank, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
 												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
 								}
 							}
@@ -233,7 +241,7 @@ int main(int argc, char** argv) {
 							if(!((mpi_myrank%ranksPerRow == 0) && j == 2)) {  //xbound down
 								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
 									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
-										printf("Rank %d receiving from %d\n", mpi_myrank, mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow));
+										//printf("Rank %d receiving from %d\n", mpi_myrank, mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow));
 												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 														}
 													}
@@ -241,9 +249,9 @@ int main(int argc, char** argv) {
 											}
 										}
 									}
+				}
+			}
 		}
-	}
-}
 }
 		
 		for(int j=0;j<num_bodies;j++){
@@ -254,7 +262,6 @@ int main(int argc, char** argv) {
 				if(k!=j){
 					float distance = sqrt( pow(bodies[j].posx-bodies[k].posx, 2) + pow(bodies[j].posy-bodies[k].posy, 2) + pow(bodies[j].posz-bodies[k].posz, 2));
 					//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
-
 						xForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posx - bodies[j].posx);
 						yForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posy - bodies[j].posy);
 						zForce += gravity * bodies[j].mass * bodies[k].mass / pow(distance,3) * (bodies[k].posz - bodies[j].posz);
@@ -278,13 +285,45 @@ int main(int argc, char** argv) {
 			//int to_other_ranks[mpi_commsize] = 0;
 
 			// Check rank changes at boundaries based on position
-
+			// Compare positions to rank boundaries and figure out the rank it belongs to
+			// If the rank it belongs to is a different rank, MPI_Isend(newrank)
+			// Set body's type to -1 in current rank
 
 
 		}
 
 		// TODO: Accept any new bodies that passed the rank boundary 
-
+		//for (int i = 0; i < mpi_commsize; i++) {
+		#ifdef DEBUG
+			int i = 0;
+			int ranksPerRow = root(mpi_commsize, 3);
+			for (int x = -1; x <= 1; x++) {
+				for (int y = -1; y <= 1; y++) {
+					for (int z = -1; z <= 1; z++) {
+						// Edge cases - these ranks don't actually exist
+						if (mpi_myrank + x < 0) {
+							continue;
+						} else if (mpi_myrank + ranksPerRow*y < 0) {
+							continue;
+						} else if (mpi_myrank + ranksPerRow*ranksPerRow*z < 0) {
+							continue;
+						}
+						//int newrank = mpi_myrank + (mpi_myrank + x >= 0 ? x : -27) + (mpi_myrank + ranksPerRow*y >= 0 ? ranksPerRow*y : -27) + (mpi_myrank + ranksPerRow*ranksPerRow*z >= 0 ? ranksPerRow*ranksPerRow*z : -27);
+						int newrank = mpi_myrank + (x) + (ranksPerRow*y) + (ranksPerRow*ranksPerRow*z);
+						if (newrank >= max(0, mpi_myrank-13) && newrank <= min(mpi_commsize-1, mpi_myrank+13) && mpi_myrank != newrank) {
+							//printf("i = %d, Rank %d = (%d, %d, %d)\n", i, newrank, x, y, z);
+							// MPI_iprobe(newrank) to check for a body that's been sent
+							// Realloc array to store new body
+							// increment num_bodies
+							// MPI_irecv(newrank) if iprobe confirms there's a body that's been sent from another rank
+						}
+						i++;
+					}
+				}
+			}
+			printf("%d\n", i);
+		#endif
+		//}
 
 		// Detect and resolve collisions (type == -1 means the body was destroyed)
 		for(int i=0;i<num_bodies;i++){
@@ -324,31 +363,6 @@ int main(int argc, char** argv) {
 	MPI_Gather(bodies, num_bodies, MPI_BODY, totalBodies, num_bodies, MPI_BODY, 0, MPI_COMM_WORLD);
 
 	if(mpi_myrank==0){
-		#ifdef DEBUG
-			int i = 0;
-			int cube = root(mpi_commsize, 3);
-			for (int x = -1; x <= 1; x++) {
-				for (int y = -1; y <= 1; y++) {
-					for (int z = -1; z <= 1; z++) {
-						// Edge cases - these ranks don't actually exist
-						if (mpi_myrank + x < 0) {
-							continue;
-						} else if (mpi_myrank + cube*y < 0) {
-							continue;
-						} else if (mpi_myrank + cube*cube*z < 0) {
-							continue;
-						}
-						//int newrank = mpi_myrank + (mpi_myrank + x >= 0 ? x : -27) + (mpi_myrank + cube*y >= 0 ? cube*y : -27) + (mpi_myrank + cube*cube*z >= 0 ? cube*cube*z : -27);
-						int newrank = mpi_myrank + (x) + (cube*y) + (cube*cube*z);
-						if (newrank >= mpi_myrank + 0 && newrank <= mpi_myrank + 26 && mpi_myrank != newrank) {
-							printf("i = %d, Rank %d = (%d, %d, %d)\n", i, newrank, x, y, z);
-						}
-						i++;
-					}
-				}
-			}
-			printf("%d\n", i);
-		#endif
 		output_Bodies(totalBodies, totalBodyNum);
 	}
 	MPI_Finalize();
