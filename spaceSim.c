@@ -276,8 +276,9 @@ int main(int argc, char** argv) {
 
 	}
 
-	// CLean up allocated memory
 	//TODO: print all bodies, not just from rank 0
+
+	// CLean up allocated memory
 
 	//test that MPI_BODY works
 	if(mpi_myrank==0){
