@@ -243,7 +243,7 @@ int main(int argc, char** argv) {
 		}
 
 		// TODO: Accept any new bodies that passed the rank boundary 
-		
+
 
 		// Detect and resolve collisions (type == -1 means the body was destroyed)
 		for(int i=0;i<num_bodies;i++){
@@ -283,7 +283,6 @@ int main(int argc, char** argv) {
 	MPI_Gather(bodies, num_bodies, MPI_BODY, totalBodies, num_bodies, MPI_BODY, 0, MPI_COMM_WORLD);
 
 	if(mpi_myrank==0){
-		printf("myrank: %d\n", mpi_myrank);
 		output_Bodies(totalBodies, totalBodyNum);
 	}
 	MPI_Finalize();
