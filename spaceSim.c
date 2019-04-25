@@ -86,8 +86,8 @@ int boundx, boundy, boundz;
 //tick time length
 int ticks;
 int tickTimeStep = 1; // day
-int minbodies = 2;
-int maxbodies = 3;
+int minbodies = 1;
+int maxbodies = 2;
 int maxMass = 1000;
 int minMass = 10;
 long int universeSize = 10000; //universe is currently a cube
@@ -160,9 +160,10 @@ int main(int argc, char** argv) {
 			printf("Velocity: (%d, %d, %d)\n", ((&bodies[i])->vx),((&bodies[i])->vy),((&bodies[i])->vz));
 		#endif
 		#ifdef DEBUG
-			randPosX = rankSize + mpi_myrank%cube*rankSize;
-			randPosY = rankSize + mpi_myrank/cube%cube*rankSize;
-			randPosZ = rankSize + mpi_myrank/(cube*cube)*rankSize;
+			int testSize = 1;
+			randPosX = mpi_myrank%cube*testSize;
+			randPosY = mpi_myrank/cube%cube*testSize;
+			randPosZ = mpi_myrank/(cube*cube)*testSize;
 			printf("Rank %d Rank Division: (%d, %d, %d)\n", mpi_myrank, randPosX, randPosY, randPosZ);
 		#endif
 	}
@@ -293,10 +294,23 @@ int main(int argc, char** argv) {
 	if(mpi_myrank==0){
 		#ifdef DEBUG
 			int i = 0;
+			int cube = root(mpi_commsize, 3);
 			for (int x = -1; x <= 1; x++) {
 				for (int y = -1; y <= 1; y++) {
 					for (int z = -1; z <= 1; z++) {
-						printf("(%d, %d, %d)\n", x, y, z);
+						// Edge cases - these ranks don't actually exist
+						if (mpi_myrank + x < 0) {
+							continue;
+						} else if (mpi_myrank + cube*y < 0) {
+							continue;
+						} else if (mpi_myrank + cube*cube*z < 0) {
+							continue;
+						}
+						//int newrank = mpi_myrank + (mpi_myrank + x >= 0 ? x : -27) + (mpi_myrank + cube*y >= 0 ? cube*y : -27) + (mpi_myrank + cube*cube*z >= 0 ? cube*cube*z : -27);
+						int newrank = mpi_myrank + (x) + (cube*y) + (cube*cube*z);
+						if (newrank >= mpi_myrank + 0 && newrank <= mpi_myrank + 26 && mpi_myrank != newrank) {
+							printf("i = %d, Rank %d = (%d, %d, %d)\n", i, newrank, x, y, z);
+						}
 						i++;
 					}
 				}
