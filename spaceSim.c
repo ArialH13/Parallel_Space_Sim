@@ -431,7 +431,7 @@ variables:
 
 to run:
 
-
+mpirun -np <ranks> ./main.exe <ticks> <tickTimeStep> <minBodies> <maxBodies> <minMass> <maxMass> <universeSize> <maxAbsVelocity>
 
 ranks:
 
