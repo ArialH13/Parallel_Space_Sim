@@ -124,11 +124,12 @@ float gravity = .0000000000667408;
 int hubble = 500;	//Units km/s/Mpc
 
 int main(int argc, char** argv) {
-
 	//declare ranks
 	MPI_Init( &argc, &argv);
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
+
+	//printf("Ranks initialized\n");
 
 	// Command line variables
 	ticks = atoi(argv[1]);
@@ -375,6 +376,8 @@ int main(int argc, char** argv) {
 
 		}
 
+		//printf("Rank %d Bodies calculated\n", mpi_myrank);
+
 		// TODO: Accept any new bodies that passed the rank boundary
 		//for (int i = 0; i < mpi_commsize; i++) {
 		#ifdef DEBUG
@@ -437,9 +440,7 @@ int main(int argc, char** argv) {
 				}
 			}
 		}
-
 	}
-
 	if(mpi_myrank==0){
       end_cycles= GetTimeBase();
   }
@@ -462,9 +463,9 @@ int main(int argc, char** argv) {
 	MPI_Finalize();
 
 	// Clean up allocated memory
-	free(totalBodies);
-	free(bodies);
-	free(otherRankMasses);
+	//free(totalBodies);
+	//free(bodies);
+	//free(otherRankMasses);
 
 	return EXIT_SUCCESS;
 
