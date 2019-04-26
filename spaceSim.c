@@ -254,8 +254,37 @@ int main(int argc, char** argv) {
 		}
 }
 
+		//calculates the velocity considering the adjacent ranks
+		for(int j=0;j<num_bodies;j++){
+			xForce = 0;
+			yForce = 0;
+			zForce = 0;
 
-		
+			for(int k=0;k<27;k++){
+				//calculate position of bodies
+				int randPosY = rand()%rankSize + mpi_myrank/ranksPerRow%ranksPerRow*rankSize;
+				int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*mpi_myrank*rankSize;
+				int kx = mpi_myrank%ranksPerRow*rankSize + k%3 - rankSize/2;
+				int ky = (mpi_myrank/3)%3*rankSize + (k/3)%3 - rankSize/2;
+				int kz = (mpi_myrank/9)*rankSize + (k/9) - rankSize/2;
+
+			if(otherRankMasses[k] != 0) {
+				float distance = sqrt( pow(bodies[j].posx-kx, 2) + pow(bodies[j].posy-ky, 2) + pow(bodies[j].posz-kz, 2));
+				//Sum up the x,y,z forces on the current object, and apply them in the positive or negative direction as appropriate
+					xForce += gravity * bodies[j].mass * otherRankMasses[k] / pow(distance,3) * (kx - bodies[j].posx);
+					yForce += gravity * bodies[j].mass * otherRankMasses[k] / pow(distance,3) * (ky - bodies[j].posy);
+					zForce += gravity * bodies[j].mass * otherRankMasses[k] / pow(distance,3) * (kz - bodies[j].posz);
+			}
+			
+			}
+
+			// Use the calculated forces to update the velocity of each body
+			bodies[j].vx += (xForce / bodies[j].mass) * tickTimeStep;
+			bodies[j].vy += (yForce / bodies[j].mass) * tickTimeStep;
+			bodies[j].vz += (zForce / bodies[j].mass) * tickTimeStep;
+
+		}
+
 		for(int j=0;j<num_bodies;j++){
 			xForce = 0;
 			yForce = 0;
