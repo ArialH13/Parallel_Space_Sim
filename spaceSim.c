@@ -156,7 +156,6 @@ int main(int argc, char** argv) {
 		//randomly generate size of objects
 		int randMass = rand()%(maxMass-minMass)+minMass;
 		//randomly generate position
-		// Micro-optimization: storing expensive ranksPerRow root function call
 		int randPosX = rand()%rankSize + mpi_myrank%ranksPerRow*rankSize;
 		int randPosY = rand()%rankSize + mpi_myrank/ranksPerRow%ranksPerRow*rankSize;
 		int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*mpi_myrank*rankSize;
@@ -316,7 +315,7 @@ int main(int argc, char** argv) {
 							// MPI_iprobe(newrank) to check for a body that's been sent
 							// Realloc array to store new body
 							// increment num_bodies
-							// MPI_irecv(newrank) if iprobe confirms there's a body that's been sent from another rank
+							// MPI_recv(newrank) if iprobe confirms there's a body that's been sent from another rank
 						}
 						i++;
 					}
@@ -379,6 +378,42 @@ int main(int argc, char** argv) {
 
 
 /* Experiments(methods/parameters/explanations):
+
+variables:
+
+ticks
+tickTimeStep
+minbodies
+maxbodies
+minMass
+maxMass
+universeSize
+maxAbsVelocity
+
+ranks:
+
+
+implement strong scaling and weak scaling
+
+If the amount of time to complete a work unit with 1 processing element is t1, 
+and the amount of time to complete the same unit of work with N processing elements is tN, 
+the strong scaling efficiency (as a percentage of linear) is given as:
+
+t1 / ( N * tN ) * 100%
+
+
+Strong scaling:
+
+
+
+If the amount of time to complete a work unit with 1 processing element is t1, 
+and the amount of time to complete N of the same work units with N processing elements is tN, 
+the weak scaling efficiency (as a percentage of linear) is given as:
+
+( t1 / tN ) * 100%
+
+Weak scaling:
+
 
 
 */
