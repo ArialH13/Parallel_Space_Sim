@@ -53,12 +53,14 @@ typedef struct {
 1 = Planet
 2 = Star
 */
+
 char *types[3] = {"Asteroid", "Planet", "Star"};
 
 //Function Declarations
 void init_body(Body *b, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz);
 void create_ID(Body *b);
 
+//Body type constructor
 void init_body(Body *b, int mass, int radius, int posx, int posy, int posz, int vx, int vy, int vz) {
 	int type = -1;
 	if(mass<100){
@@ -80,6 +82,7 @@ void init_body(Body *b, int mass, int radius, int posx, int posy, int posz, int 
 	b-> vz = vz;
 }
 
+//Helper functions for body type
 void create_ID(Body *b) {
 	b-> ID = IDnum;
 	IDnum++;
@@ -113,7 +116,7 @@ int minbodies = 1;
 int maxbodies = 2;
 int maxMass = 1000;
 int minMass = 10;
-long int universeSize = 10000; //universe is currently a ranksPerRow
+long int universeSize = 10000;
 long int rankSize = 0;
 int rankMass = 0;
 int* otherRankMasses;
@@ -128,8 +131,6 @@ int main(int argc, char** argv) {
 	MPI_Init( &argc, &argv);
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
-
-	//printf("Ranks initialized\n");
 
 	// Command line variables
 	ticks = atoi(argv[1]);
@@ -147,8 +148,6 @@ int main(int argc, char** argv) {
 
 	rankSize = universeSize/root(mpi_commsize, 3);
 	ranksPerRow = root(mpi_commsize, 3);
-	//printf("ranksPerRow: %d\n", ranksPerRow);
-
 
 	otherRankMasses = calloc(27, sizeof(int));
 
@@ -171,10 +170,11 @@ int main(int argc, char** argv) {
     offsets[8] = offsetof(Body, vy);
     offsets[9] = offsetof(Body, vz);
 
+    //Create MPI_BODY type for MPI
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &MPI_BODY);
     MPI_Type_commit(&MPI_BODY);
 
-	//how are bodies distributed randomly?
+    //Bodies are distributed randomly within the bounds of each rank
 	srand(time(NULL)*(mpi_myrank+1));   // Initialization, should only be called once.
 
 	int num_bodies = rand()%(maxbodies-minbodies)+minbodies;      // Returns a pseudo-random integer between minbodies and maxbodies
@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
 		int randVelZ = rand()%maxAbsVelocity;
-		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //example of init_body
+		init_body(&bodies[i], randMass, 10, randPosX, randPosY, randPosZ, randVelX, randVelY, randVelZ); //puts random coordinates into body
 		#ifdef DEBUG1
 			printf("ID: %d, Type: %s, Mass: %d\n", ((&bodies[i])->ID), types[((&bodies[i])->type)], ((&bodies[i])->mass));
 			printf("Position: (%d, %d, %d)\n", ((&bodies[i])->posx),((&bodies[i])->posy),((&bodies[i])->posz));
@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
 		#endif
 	}
 
-	//mass of added ranks used between ranks for force calculations
+	//initial rank mass, used between ranks for force calculations
 	for(int j = 0; j < num_bodies; j++) {
 		rankMass = rankMass + bodies[j].mass;
 	}
@@ -216,44 +216,36 @@ int main(int argc, char** argv) {
 	float yForce = 0;
 	float zForce = 0;
 	//Perform the calculations for gravitational forces between bodies for as many ticks as specified by the user
-	/*
-	Before first tick:
-	Generate bodies and randomize based upon the rank boundaries, not universe boundaries
-	Sort each rank's population (bodies)
-	*/
 
+	/*
+	In this loop we update: Sum of forces, Velocity, and Position for each body within the rank, for each tick
+	*/
 	for(int i=0;i<ticks;i++){
-		/*
-		In this loop we update:
-		Sum of forces
-		Velocity
-		Position
-		*/
 
 		//add forces of this rank together (for now, assumption is that mass is generally centered in the rank)
-		//for now, the force of the rank will be calculated using the added mass
+		//force of the rank will be calculated using the added mass
 		//mpi translate rankmass
 		//commented for debugging purposes
 
+		//offset sets the initial tested communication to the minimum corner of the 3d adjacent space
 		int offset = 1 + ranksPerRow + ranksPerRow*ranksPerRow;
 		MPI_Request request;
 		MPI_Status status;
+		//must test adjacent ranks for each direction, x, y, and z axis
 		for(int j = 0; j < 3; j++) { 	//j == x, +1 -1
 			for(int k = 0; k < 3; k++) {	//k == y, +-ranksPerRow
 				for(int l = 0; l < 3; l++) {  //l == z +-/ranksPerRow*ranksPerRow
 					//get mass from ranks
 					if(!((j == 1 && k == 1) && l == 1)) {
-						//row to be recieved and sent to
-						//xbound up down
+						//sends mass to the adjacent rank associated with j, k, and l directions, if the adjacent rank isnt out of bounds
 						int shouldSend = 0;
 						int shouldReceive = 0;
-						if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 2)) { //xbound up
-							if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 2)) {  //ybound up
-								if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 2)) {  //zbound up
-									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
-										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
-											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
-
+						if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 2)) { //upper xbound
+							if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 2)) {  //upper ybound
+								if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 2)) {  //upper zbound
+									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //lower xbound
+										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //lower ybound
+											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//lower zbound
 												if(mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow >= 0 && mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow < mpi_commsize) {
 													#ifdef DEBUG_MSG
 														printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
@@ -276,6 +268,7 @@ int main(int argc, char** argv) {
 
 				}
 			}
+				//mirror of the above calculation. The rank that the above calculation is sent to in one rank is received in that rank here, with mirrored direction, preventing deadlock
 				if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 0)) { //xbound up
 					if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 0)) {  //ybound up
 						if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 0)) {  //zbound up
@@ -283,7 +276,6 @@ int main(int argc, char** argv) {
 								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
 									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
 										if(mpi_myrank + offset - ( j + k*ranksPerRow + l*ranksPerRow*ranksPerRow) >= 0 && mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow) < mpi_commsize) {
-
 											if(mpi_myrank==0){
 												comm_start_cycles= GetTimeBase();
 											}
@@ -448,6 +440,7 @@ int main(int argc, char** argv) {
 	totalBodyNum = num_bodies * mpi_commsize;
 	totalBodies = calloc(totalBodyNum, sizeof(Body));
 
+	//collects bodies in 1 array to output to CSV file
 	MPI_Gather(bodies, num_bodies, MPI_BODY, totalBodies, num_bodies, MPI_BODY, 0, MPI_COMM_WORLD);
 
 	if(mpi_myrank==0){
