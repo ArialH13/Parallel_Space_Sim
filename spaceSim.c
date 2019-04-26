@@ -414,14 +414,6 @@ int main(int argc, char** argv) {
 
 	}
 
-	if(mpi_myrank==0){
-    	end_cycles= GetTimeBase();
-    }
-
-	time_in_secs = ((double)(end_cycles - start_cycles)) /
-    	processor_frequency;
-	printf("Program execution time: %f\n",time_in_secs);
-
 	totalBodyNum = num_bodies * mpi_commsize;
 	totalBodies = calloc(totalBodyNum, sizeof(Body));
 
@@ -429,7 +421,12 @@ int main(int argc, char** argv) {
 
 	if(mpi_myrank==0){
 		output_Bodies(totalBodies, totalBodyNum);
-	}
+    	end_cycles= GetTimeBase();
+
+    	time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
+    	printf("end end_cycles: %lld start_cycles: %lld\n", end_cycles, start_cycles);
+		printf("Program execution time: %f\n",time_in_secs);
+    }
 	MPI_Finalize();
 
 	// Clean up allocated memory
@@ -459,16 +456,23 @@ to run:
 mpirun -np <ranks> ./main.exe <ticks> <tickTimeStep> <minBodies> <maxBodies> <minMass> <maxMass> <universeSize> <maxAbsVelocity>
 
 ranks:
+
 implement strong scaling and weak scaling
+
 If the amount of time to complete a work unit with 1 processing element is t1,
 and the amount of time to complete the same unit of work with N processing elements is tN,
 the strong scaling efficiency (as a percentage of linear) is given as:
 t1 / ( N * tN ) * 100%
+
 Strong scaling:
+
 Compute nodes:
+
 If the amount of time to complete a work unit with 1 processing element is t1,
 and the amount of time to complete N of the same work units with N processing elements is tN,
 the weak scaling efficiency (as a percentage of linear) is given as:
 ( t1 / tN ) * 100%
+
 Weak scaling:
+
 */
