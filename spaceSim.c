@@ -14,8 +14,12 @@
 
 double processor_frequency = 1600000000.0; // processing speed for BG/Q
 double time_in_secs = 0;
+double comm_time_in_secs = 0;
 unsigned long long start_cycles=0;
 unsigned long long end_cycles=0;
+unsigned long long comm_start_cycles=0;
+unsigned long long comm_end_cycles=0;
+unsigned long long tmp_cycles=0;
 
 //Space Simulator
 static inline int root(int input, int n)
@@ -248,10 +252,16 @@ int main(int argc, char** argv) {
 									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
 										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
-												#ifdef DEBUG_MSG
-													printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
-												#endif
+												printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												if(mpi_myrank==0){
+											      comm_start_cycles= GetTimeBase();
+											    }
 												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
+												if(mpi_myrank==0){
+											      comm_end_cycles= GetTimeBase();
+											    }
+													comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) /
+												    	processor_frequency;
 								}
 							}
 						}
@@ -266,11 +276,17 @@ int main(int argc, char** argv) {
 							if(!((mpi_myrank%ranksPerRow == 0) && j == 2)) {  //xbound down
 								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
 									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
+										if(mpi_myrank==0){
+												comm_start_cycles= GetTimeBase();
+											}
 												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-												#ifdef DEBUG_MSG
-													printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow],
-														mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
-												#endif
+												printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow],
+													mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
+													if(mpi_myrank==0){
+												      comm_end_cycles= GetTimeBase();
+												    }
+														comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) /
+													    	processor_frequency;
 														}
 													}
 												}
@@ -413,6 +429,17 @@ int main(int argc, char** argv) {
 		}
 
 	}
+
+	if(mpi_myrank==0){
+      end_cycles= GetTimeBase();
+  }
+
+	time_in_secs = ((double)(end_cycles - start_cycles)) /
+    	processor_frequency;
+	printf("Program execution time: %f\n",time_in_secs);
+	printf("Communication execution time: %f\n",comm_time_in_secs);
+	printf("Calculation time: %f\n",time_in_secs-comm_time_in_secs);
+
 
 	totalBodyNum = num_bodies * mpi_commsize;
 	totalBodies = calloc(totalBodyNum, sizeof(Body));
