@@ -252,18 +252,21 @@ int main(int argc, char** argv) {
 									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
 										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
-												#ifdef DEBUG_MSG
-													printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
-												#endif
-												if(mpi_myrank==0){
-											      comm_start_cycles= GetTimeBase();
-											    }
-												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
-												if(mpi_myrank==0){
-											      comm_end_cycles= GetTimeBase();
-											    }
-													comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) /
-												    	processor_frequency;
+
+												if(mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow >= 0 && mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow < mpi_commsize) {
+													#ifdef DEBUG_MSG
+														printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+													#endif
+
+													if(mpi_myrank==0){
+												      comm_start_cycles= GetTimeBase();
+												    }
+													MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
+													if(mpi_myrank==0){
+												    	comm_end_cycles= GetTimeBase();
+												    }
+													comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) / processor_frequency;
+												}
 								}
 							}
 						}
@@ -278,7 +281,9 @@ int main(int argc, char** argv) {
 							if(!((mpi_myrank%ranksPerRow == 0) && j == 2)) {  //xbound down
 								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
 									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
-										if(mpi_myrank==0){
+										if(mpi_myrank + offset - ( j + k*ranksPerRow + l*ranksPerRow*ranksPerRow) >= 0 && mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow) < mpi_commsize) {
+
+											if(mpi_myrank==0){
 												comm_start_cycles= GetTimeBase();
 											}
 												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -286,11 +291,12 @@ int main(int argc, char** argv) {
 													printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow],
 														mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
 												#endif
-													if(mpi_myrank==0){
-												      comm_end_cycles= GetTimeBase();
-												    }
-														comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) /
-													    	processor_frequency;
+												if(mpi_myrank==0){
+												    comm_end_cycles= GetTimeBase();
+												}
+												comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) / processor_frequency;
+										}
+
 														}
 													}
 												}
