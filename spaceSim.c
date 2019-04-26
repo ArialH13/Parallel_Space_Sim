@@ -468,11 +468,6 @@ Strong scaling:
 
 Compute nodes:
 
-If the amount of time to complete a work unit with 1 processing element is t1,
-and the amount of time to complete N of the same work units with N processing elements is tN,
-the weak scaling efficiency (as a percentage of linear) is given as:
-( t1 / tN ) * 100%
 
-Weak scaling:
 
 */
