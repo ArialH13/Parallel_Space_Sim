@@ -225,9 +225,7 @@ int main(int argc, char** argv) {
 									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
 										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
-												printf("Rank %d sending to %d\n", mpi_myrank, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
-												printf("Rank %d: %d %d %d, Mass: %d", mpi_myrank, j, k, l, bodies[mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow].mass);
-												//printf("Rank %d sending to %d\n", mpi_myrank, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
 												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
 								}
 							}
@@ -243,8 +241,9 @@ int main(int argc, char** argv) {
 							if(!((mpi_myrank%ranksPerRow == 0) && j == 2)) {  //xbound down
 								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
 									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
-										//printf("Rank %d receiving from %d\n", mpi_myrank, mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow));
 												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+												printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 
+													mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
 														}
 													}
 												}
@@ -255,6 +254,8 @@ int main(int argc, char** argv) {
 			}
 		}
 }
+
+
 		
 		for(int j=0;j<num_bodies;j++){
 			xForce = 0;
@@ -279,8 +280,6 @@ int main(int argc, char** argv) {
 			bodies[j].posx += bodies[j].vx * tickTimeStep;
 			bodies[j].posy += bodies[j].vy * tickTimeStep;
 			bodies[j].posz += bodies[j].vz * tickTimeStep;
-
-			//Add forces of this rank together for other ranks
 
 			//Array of the number of objects to be sent to each other rank
 			//Ranks ordered bottom to top, left to right, back to forward
