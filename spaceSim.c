@@ -217,6 +217,7 @@ int main(int argc, char** argv) {
 										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
 												printf("Rank %d sending to %d\n", mpi_myrank, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												printf("Rank %d: %d %d %d, Mass: %d", mpi_myrank, j, k, l, bodies[mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow].mass);
 												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
 								}
 							}
