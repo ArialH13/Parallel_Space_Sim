@@ -6,6 +6,21 @@
 #include <time.h>
 #include <stddef.h>
 
+#ifdef BGQ
+#include<hwi/include/bqc/A2_inlines.h>
+#else
+#define GetTimeBase MPI_Wtime
+#endif
+
+double processor_frequency = 1600000000.0; // processing speed for BG/Q
+double time_in_secs = 0;
+double comm_time_in_secs = 0;
+unsigned long long start_cycles=0;
+unsigned long long end_cycles=0;
+unsigned long long comm_start_cycles=0;
+unsigned long long comm_end_cycles=0;
+unsigned long long tmp_cycles=0;
+
 //Space Simulator
 static inline int root(int input, int n)
 {
@@ -74,7 +89,7 @@ void create_ID(Body *b) {
 void output_Bodies(Body *final_bodies, int num){
 	FILE* output = fopen("universe_contents.csv", "w");
 	for(int i=0;i<num;i++){
-		fprintf(output,"%d,%d,%d,%d\n",final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
+		fprintf(output,"%s,%d,%d,%d,%d\n",types[final_bodies[i].type],final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
 	}
   fclose(output);
 }
@@ -115,7 +130,20 @@ int main(int argc, char** argv) {
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
 
-	int ticks = atoi(argv[1]);
+	// Command line variables
+	ticks = atoi(argv[1]);
+	tickTimeStep = atoi(argv[2]);
+	minbodies = atoi(argv[3]);
+	maxbodies = atoi(argv[4]);
+	minMass = atoi(argv[5]);
+	maxMass = atoi(argv[6]);
+	universeSize = strtol(argv[7], NULL, 10);
+	maxAbsVelocity = atoi(argv[8]);
+
+	if(mpi_myrank==0){
+      start_cycles= GetTimeBase();
+    }
+
 	rankSize = universeSize/root(mpi_commsize, 3);
 	ranksPerRow = root(mpi_commsize, 3);
 	//printf("ranksPerRow: %d\n", ranksPerRow);
@@ -158,7 +186,7 @@ int main(int argc, char** argv) {
 		//randomly generate position
 		int randPosX = rand()%rankSize + mpi_myrank%ranksPerRow*rankSize;
 		int randPosY = rand()%rankSize + mpi_myrank/ranksPerRow%ranksPerRow*rankSize;
-		int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*mpi_myrank*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
@@ -205,7 +233,7 @@ int main(int argc, char** argv) {
 		//for now, the force of the rank will be calculated using the added mass
 		//mpi translate rankmass
 		//commented for debugging purposes
-		
+
 		int offset = 1 + ranksPerRow + ranksPerRow*ranksPerRow;
 		MPI_Request request;
 		MPI_Status status;
@@ -215,10 +243,10 @@ int main(int argc, char** argv) {
 					//get mass from ranks
 					if(!((j == 1 && k == 1) && l == 1)) {
 						//row to be recieved and sent to
-						//xbound up down 
+						//xbound up down
 						int shouldSend = 0;
 						int shouldReceive = 0;
-						if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 2)) { //xbound up 
+						if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 2)) { //xbound up
 							if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 2)) {  //ybound up
 								if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 2)) {  //zbound up
 									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
@@ -226,27 +254,52 @@ int main(int argc, char** argv) {
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
 												if(mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow >= 0 && mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow < mpi_commsize) {
 												printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												if(mpi_myrank==0){
+											      comm_start_cycles= GetTimeBase();
+											    }
 												MPI_Isend(&rankMass, 1, MPI_INT, mpi_myrank- offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow, mpi_myrank, MPI_COMM_WORLD, &request);
+<<<<<<< HEAD
 											}
+=======
+												if(mpi_myrank==0){
+											      comm_end_cycles= GetTimeBase();
+											    }
+													comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) /
+												    	processor_frequency;
+>>>>>>> f79049c2a1d4c3368f841ccd9717b52f83121707
 								}
 							}
 						}
-					
+
 					}
 
 				}
 			}
-				if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 0)) { //xbound up 
+				if(!((mpi_myrank%ranksPerRow == (ranksPerRow-1)) && j == 0)) { //xbound up
 					if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == (ranksPerRow-1)) && k == 0)) {  //ybound up
 						if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == ranksPerRow-1) && l == 0)) {  //zbound up
 							if(!((mpi_myrank%ranksPerRow == 0) && j == 2)) {  //xbound down
 								if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 2))	{  //ybound down
 									if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 2)) {	//zbound down
+<<<<<<< HEAD
 										if(mpi_myrank + offset - ( j + k*ranksPerRow + l*ranksPerRow*ranksPerRow) >= 0 && mpi_myrank + offset - (j + k*ranksPerRow + l*ranksPerRow*ranksPerRow) < mpi_commsize) {
-												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-												printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 
-													mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
+=======
+										if(mpi_myrank==0){
+												comm_start_cycles= GetTimeBase();
 											}
+>>>>>>> f79049c2a1d4c3368f841ccd9717b52f83121707
+												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+												printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow],
+													mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
+<<<<<<< HEAD
+											}
+=======
+													if(mpi_myrank==0){
+												      comm_end_cycles= GetTimeBase();
+												    }
+														comm_time_in_secs += ((double)(comm_end_cycles - comm_start_cycles)) /
+													    	processor_frequency;
+>>>>>>> f79049c2a1d4c3368f841ccd9717b52f83121707
 														}
 													}
 												}
@@ -279,7 +332,7 @@ int main(int argc, char** argv) {
 					yForce += gravity * bodies[j].mass * otherRankMasses[k] / pow(distance,3) * (ky - bodies[j].posy);
 					zForce += gravity * bodies[j].mass * otherRankMasses[k] / pow(distance,3) * (kz - bodies[j].posz);
 			}
-			
+
 			}
 
 			// Use the calculated forces to update the velocity of each body
@@ -325,7 +378,7 @@ int main(int argc, char** argv) {
 
 		}
 
-		// TODO: Accept any new bodies that passed the rank boundary 
+		// TODO: Accept any new bodies that passed the rank boundary
 		//for (int i = 0; i < mpi_commsize; i++) {
 		#ifdef DEBUG
 			int i = 0;
@@ -390,6 +443,17 @@ int main(int argc, char** argv) {
 
 	}
 
+	if(mpi_myrank==0){
+      end_cycles= GetTimeBase();
+  }
+
+	time_in_secs = ((double)(end_cycles - start_cycles)) /
+    	processor_frequency;
+	printf("Program execution time: %f\n",time_in_secs);
+	printf("Communication execution time: %f\n",comm_time_in_secs);
+	printf("Calculation time: %f\n",time_in_secs-comm_time_in_secs);
+
+
 	totalBodyNum = num_bodies * mpi_commsize;
 	totalBodies = calloc(totalBodyNum, sizeof(Body));
 
@@ -397,7 +461,12 @@ int main(int argc, char** argv) {
 
 	if(mpi_myrank==0){
 		output_Bodies(totalBodies, totalBodyNum);
-	}
+    	end_cycles= GetTimeBase();
+
+    	time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
+    	printf("end end_cycles: %lld start_cycles: %lld\n", end_cycles, start_cycles);
+		printf("Program execution time: %f\n",time_in_secs);
+    }
 	MPI_Finalize();
 
 	// Clean up allocated memory
@@ -411,42 +480,39 @@ int main(int argc, char** argv) {
 
 
 /* Experiments(methods/parameters/explanations):
-
 variables:
 
-ticks
-tickTimeStep
-minbodies
-maxbodies
-minMass
-maxMass
-universeSize
-maxAbsVelocity
+[1]ticks
+[2]tickTimeStep
+[3]minbodies
+[4]maxbodies
+[5]minMass
+[6]maxMass
+[7]universeSize
+[8]maxAbsVelocity
+
+to run:
+
+mpirun -np <ranks> ./main.exe <ticks> <tickTimeStep> <minBodies> <maxBodies> <minMass> <maxMass> <universeSize> <maxAbsVelocity>
 
 ranks:
 
-
 implement strong scaling and weak scaling
 
-If the amount of time to complete a work unit with 1 processing element is t1, 
-and the amount of time to complete the same unit of work with N processing elements is tN, 
+If the amount of time to complete a work unit with 1 processing element is t1,
+and the amount of time to complete the same unit of work with N processing elements is tN,
 the strong scaling efficiency (as a percentage of linear) is given as:
-
 t1 / ( N * tN ) * 100%
-
 
 Strong scaling:
 
+Compute nodes:
 
-
-If the amount of time to complete a work unit with 1 processing element is t1, 
-and the amount of time to complete N of the same work units with N processing elements is tN, 
+If the amount of time to complete a work unit with 1 processing element is t1,
+and the amount of time to complete N of the same work units with N processing elements is tN,
 the weak scaling efficiency (as a percentage of linear) is given as:
-
 ( t1 / tN ) * 100%
 
 Weak scaling:
-
-
 
 */
