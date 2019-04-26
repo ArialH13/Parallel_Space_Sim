@@ -6,6 +6,9 @@ main: spaceSim.c
 debug: spaceSim.c
 	mpicc -o main.exe spaceSim.c -lm -D DEBUG
 
+msg: spaceSim.c
+	mpicc -o main.exe spaceSim.c -lm -D DEBUG_MSG
+
 bluegene: spaceSim.c
 	mpixlc -o main.exe spaceSim.c -lm 
 

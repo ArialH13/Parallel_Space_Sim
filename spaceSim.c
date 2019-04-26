@@ -130,11 +130,20 @@ int main(int argc, char** argv) {
 	MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
 	MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
 
+	// Command line variables
+	ticks = atoi(argv[1]);
+	tickTimeStep = atoi(argv[2]);
+	minbodies = atoi(argv[3]);
+	maxbodies = atoi(argv[4]);
+	minMass = atoi(argv[5]);
+	maxMass = atoi(argv[6]);
+	universeSize = strtol(argv[7], NULL, 10);
+	maxAbsVelocity = atoi(argv[8]);
+
 	if(mpi_myrank==0){
       start_cycles= GetTimeBase();
     }
 
-	int ticks = atoi(argv[1]);
 	rankSize = universeSize/root(mpi_commsize, 3);
 	ranksPerRow = root(mpi_commsize, 3);
 	//printf("ranksPerRow: %d\n", ranksPerRow);
@@ -439,7 +448,12 @@ int main(int argc, char** argv) {
 
 	if(mpi_myrank==0){
 		output_Bodies(totalBodies, totalBodyNum);
-	}
+    	end_cycles= GetTimeBase();
+
+    	time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
+    	printf("end end_cycles: %lld start_cycles: %lld\n", end_cycles, start_cycles);
+		printf("Program execution time: %f\n",time_in_secs);
+    }
 	MPI_Finalize();
 
 	// Clean up allocated memory
@@ -454,25 +468,38 @@ int main(int argc, char** argv) {
 
 /* Experiments(methods/parameters/explanations):
 variables:
-ticks
-tickTimeStep
-minbodies
-maxbodies
-minMass
-maxMass
-universeSize
-maxAbsVelocity
+
+[1]ticks
+[2]tickTimeStep
+[3]minbodies
+[4]maxbodies
+[5]minMass
+[6]maxMass
+[7]universeSize
+[8]maxAbsVelocity
+
+to run:
+
+mpirun -np <ranks> ./main.exe <ticks> <tickTimeStep> <minBodies> <maxBodies> <minMass> <maxMass> <universeSize> <maxAbsVelocity>
+
 ranks:
+
 implement strong scaling and weak scaling
+
 If the amount of time to complete a work unit with 1 processing element is t1,
 and the amount of time to complete the same unit of work with N processing elements is tN,
 the strong scaling efficiency (as a percentage of linear) is given as:
 t1 / ( N * tN ) * 100%
+
 Strong scaling:
+
 Compute nodes:
+
 If the amount of time to complete a work unit with 1 processing element is t1,
 and the amount of time to complete N of the same work units with N processing elements is tN,
 the weak scaling efficiency (as a percentage of linear) is given as:
 ( t1 / tN ) * 100%
+
 Weak scaling:
+
 */
