@@ -252,7 +252,9 @@ int main(int argc, char** argv) {
 									if(!((mpi_myrank%ranksPerRow == 0) && j == 0)) {  //xbound down
 										if(!(((mpi_myrank/ranksPerRow)%ranksPerRow == 0) && k == 0))	{  //ybound down
 											if(!((mpi_myrank/(ranksPerRow*ranksPerRow) == 0) && l == 0)) {	//zbound down
-												printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												#ifdef DEBUG_MSG
+													printf("Rank %d: %d %d %d, Mass: %d to Rank: %d\n", mpi_myrank, j, k, l, rankMass, mpi_myrank - offset + j + k*ranksPerRow + l*ranksPerRow*ranksPerRow);
+												#endif
 												if(mpi_myrank==0){
 											      comm_start_cycles= GetTimeBase();
 											    }
@@ -280,8 +282,10 @@ int main(int argc, char** argv) {
 												comm_start_cycles= GetTimeBase();
 											}
 												MPI_Recv(&otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow], 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-												printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow],
-													mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
+												#ifdef DEBUG_MSG
+													printf("Rank %d: %d %d %d, Mass: %d from rank %d\n", mpi_myrank, j, k, l, otherRankMasses[mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow],
+														mpi_myrank+offset - j - k*ranksPerRow - l*ranksPerRow*ranksPerRow);
+												#endif
 													if(mpi_myrank==0){
 												      comm_end_cycles= GetTimeBase();
 												    }
@@ -434,13 +438,6 @@ int main(int argc, char** argv) {
       end_cycles= GetTimeBase();
   }
 
-	time_in_secs = ((double)(end_cycles - start_cycles)) /
-    	processor_frequency;
-	printf("Program execution time: %f\n",time_in_secs);
-	printf("Communication execution time: %f\n",comm_time_in_secs);
-	printf("Calculation time: %f\n",time_in_secs-comm_time_in_secs);
-
-
 	totalBodyNum = num_bodies * mpi_commsize;
 	totalBodies = calloc(totalBodyNum, sizeof(Body));
 
@@ -450,9 +447,11 @@ int main(int argc, char** argv) {
 		output_Bodies(totalBodies, totalBodyNum);
     	end_cycles= GetTimeBase();
 
-    	time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
-    	printf("end end_cycles: %lld start_cycles: %lld\n", end_cycles, start_cycles);
+		time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
 		printf("Program execution time: %f\n",time_in_secs);
+		printf("Communication execution time: %f\n",comm_time_in_secs);
+		printf("Calculation time: %f\n",time_in_secs-comm_time_in_secs);
+
     }
 	MPI_Finalize();
 
