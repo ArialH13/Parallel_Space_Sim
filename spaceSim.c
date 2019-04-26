@@ -74,7 +74,7 @@ void create_ID(Body *b) {
 void output_Bodies(Body *final_bodies, int num){
 	FILE* output = fopen("universe_contents.csv", "w");
 	for(int i=0;i<num;i++){
-		fprintf(output,"%d,%d,%d,%d\n",final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
+		fprintf(output,"%s,%d,%d,%d,%d\n",types[final_bodies[i].type],final_bodies[i].mass,final_bodies[i].posx,final_bodies[i].posy,final_bodies[i].posz);
 	}
   fclose(output);
 }
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
 		//randomly generate position
 		int randPosX = rand()%rankSize + mpi_myrank%ranksPerRow*rankSize;
 		int randPosY = rand()%rankSize + mpi_myrank/ranksPerRow%ranksPerRow*rankSize;
-		int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*mpi_myrank*rankSize;
+		int randPosZ = rand()%rankSize + mpi_myrank/(ranksPerRow*ranksPerRow)*rankSize;
 		//randomly generate velocity
 		int randVelX = rand()%maxAbsVelocity;
 		int randVelY = rand()%maxAbsVelocity;
@@ -432,6 +432,10 @@ t1 / ( N * tN ) * 100%
 
 
 Strong scaling:
+
+Compute nodes:
+
+
 
 
 
